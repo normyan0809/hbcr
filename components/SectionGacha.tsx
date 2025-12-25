@@ -1,0 +1,284 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Capsule } from '../types';
+import { Plus, Gift, X } from 'lucide-react';
+
+const INITIAL_CAPSULES: Capsule[] = [
+  { id: '1', message: "May all your wishes come true! ✨", color: 'from-red-400 to-red-600' },
+  { id: '2', message: "Stay awesome and unique! 🦄", color: 'from-blue-400 to-blue-600' },
+  { id: '3', message: "Health, wealth, and happiness! 💰", color: 'from-green-400 to-green-600' },
+  { id: '4', message: "Another year wiser! 🧠", color: 'from-yellow-400 to-yellow-600' },
+  { id: '5', message: "Keep shining bright! 🌟", color: 'from-purple-400 to-purple-600' },
+];
+
+const COLORS = [
+  'from-red-400 to-red-600', 
+  'from-blue-400 to-blue-600', 
+  'from-green-400 to-green-600', 
+  'from-yellow-400 to-yellow-600', 
+  'from-purple-400 to-purple-600', 
+  'from-pink-400 to-pink-600', 
+  'from-orange-400 to-orange-600', 
+  'from-indigo-400 to-indigo-600'
+];
+
+// Generate random positions for the "pile" of balls at the bottom
+const getRandomPos = (index: number, total: number) => {
+    // Spread balls horizontally between 10% and 90%
+    const left = 15 + ((index % 5) * 15) + (Math.random() * 10 - 5); 
+    // Stack them vertically at the bottom (80% - 60%)
+    const top = 70 - (Math.floor(index / 5) * 15) + (Math.random() * 10 - 5);
+    return { left: `${left}%`, top: `${top}%` };
+};
+
+const SectionGacha: React.FC = () => {
+  const [capsules, setCapsules] = useState<Capsule[]>(INITIAL_CAPSULES);
+  const [newWish, setNewWish] = useState('');
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [droppingId, setDroppingId] = useState<string | null>(null); // Track which ball is currently falling inside the globe
+  const [prize, setPrize] = useState<Capsule | null>(null);
+  const [droppedCapsule, setDroppedCapsule] = useState<Capsule | null>(null);
+
+  const handleAddWish = () => {
+    if (!newWish.trim()) return;
+    const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const newCapsule: Capsule = {
+      id: Date.now().toString(),
+      message: newWish,
+      color: randomColor
+    };
+    setCapsules(prev => [...prev, newCapsule]);
+    setNewWish('');
+  };
+
+  const handleSpin = () => {
+    if (capsules.length === 0 || isSpinning || prize || droppedCapsule || droppingId) return;
+    
+    setIsSpinning(true);
+    setDroppedCapsule(null);
+
+    // 1. Spin Phase (Chaos) - Lasts 2 seconds
+    setTimeout(() => {
+        // 2. Select Prize
+        const randomIndex = Math.floor(Math.random() * capsules.length);
+        const selected = capsules[randomIndex];
+        
+        setIsSpinning(false); // Stop chaos
+        setDroppingId(selected.id); // Start drop animation for specific ball
+
+        // 3. Drop Animation Phase - Lasts 0.8 seconds (matches animation duration)
+        setTimeout(() => {
+            // Remove from machine
+            setCapsules(prev => prev.filter(c => c.id !== selected.id));
+            setDroppingId(null);
+            
+            // Appear in chute
+            setDroppedCapsule(selected);
+        }, 800);
+
+    }, 2000);
+  };
+
+  return (
+    <div className="flex flex-col xl:flex-row h-full items-center justify-center gap-6 p-4 pb-32 relative z-10 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar">
+      
+      {/* Left Panel: Controls */}
+      <motion.div 
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="w-full max-w-md xl:w-1/3 bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 order-2 xl:order-1 z-30"
+      >
+        <h3 className="font-cursive text-3xl text-white mb-4">Add a Wish</h3>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={newWish}
+            onChange={(e) => setNewWish(e.target.value)}
+            placeholder="Type your blessing..."
+            className="flex-1 bg-black/40 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-pink-500 transition-colors font-chinese text-xl"
+            onKeyDown={(e) => e.key === 'Enter' && handleAddWish()}
+          />
+          <button 
+            onClick={handleAddWish}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-90 text-white p-2 rounded-lg transition-all shadow-lg"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+        <p className="text-white/60 text-sm mb-2">Capsules remaining: {capsules.length}</p>
+        <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
+            {capsules.map((c, i) => (
+                <div key={i} className={`w-4 h-4 rounded-full bg-gradient-to-br ${c.color} shadow-sm border border-white/20`} />
+            ))}
+        </div>
+      </motion.div>
+
+      {/* Center: The Gacha Machine */}
+      <div className="relative flex flex-col items-center order-1 xl:order-2 scale-90 md:scale-100 mt-8 xl:mt-0 z-20">
+        
+        {/* Machine Top (Dome) */}
+        <div className="relative z-20">
+            {/* Glass Container */}
+            <div className="w-72 h-72 md:w-80 md:h-80 bg-blue-100/10 backdrop-blur-[2px] rounded-full border-4 border-white/30 relative overflow-hidden shadow-[inset_10px_10px_40px_rgba(255,255,255,0.2),0_0_20px_rgba(255,255,255,0.1)]">
+                
+                {/* Reflections */}
+                <div className="absolute top-8 left-8 w-20 h-10 bg-white/30 rounded-full rotate-[-45deg] blur-md z-30 pointer-events-none" />
+                <div className="absolute bottom-8 right-8 w-12 h-12 bg-white/10 rounded-full blur-xl z-30 pointer-events-none" />
+
+                {/* Balls Inside */}
+                {/* We map balls relative to the container */}
+                <div className="absolute inset-0 z-10">
+                    <AnimatePresence>
+                        {capsules.slice(0, 15).map((cap, i) => {
+                            const isDropping = cap.id === droppingId;
+                            const pos = getRandomPos(i, capsules.length);
+                            
+                            return (
+                                <motion.div
+                                    key={cap.id}
+                                    layoutId={cap.id}
+                                    className={`absolute w-14 h-14 rounded-full bg-gradient-to-br ${cap.color} border border-white/40 shadow-[inset_-5px_-5px_10px_rgba(0,0,0,0.3),2px_2px_5px_rgba(0,0,0,0.3)] flex items-center justify-center`}
+                                    style={{
+                                        left: isDropping ? '50%' : pos.left, 
+                                        top: isDropping ? '50%' : pos.top,
+                                        transform: 'translate(-50%, -50%)', // Center anchor
+                                    }}
+                                    animate={
+                                        isDropping 
+                                        ? { 
+                                            // Drop Animation: Move to center bottom, then fall down
+                                            left: '50%',
+                                            top: ['50%', '80%', '120%'], // Go through the bottom
+                                            opacity: [1, 1, 0],
+                                            scale: [1, 0.9, 0.8],
+                                            transition: { duration: 0.8, ease: "easeInOut" }
+                                          }
+                                        : isSpinning 
+                                        ? {
+                                            // Chaos Animation: Fly around randomly
+                                            left: [pos.left, `${Math.random() * 80 + 10}%`, `${Math.random() * 80 + 10}%`, `${Math.random() * 80 + 10}%`, pos.left],
+                                            top: [pos.top, `${Math.random() * 80 + 10}%`, `${Math.random() * 80 + 10}%`, `${Math.random() * 80 + 10}%`, pos.top],
+                                            rotate: [0, 180, -180, 360, 0],
+                                            transition: { duration: 2, ease: "easeInOut" }
+                                          } 
+                                        : {
+                                            // Idle Animation: Slight float
+                                            y: [0, -5, 0],
+                                            transition: { duration: 3, repeat: Infinity, delay: i * 0.2 }
+                                          }
+                                    }
+                                >
+                                    <div className="w-full h-[1px] bg-black/10 absolute top-1/2" />
+                                    <div className="w-6 h-6 bg-white/30 rounded-full absolute top-1 left-2 blur-[1px]" />
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+                </div>
+            </div>
+        </div>
+
+        {/* Machine Body */}
+        <div className="w-64 h-48 bg-gradient-to-b from-pink-500 via-pink-600 to-pink-700 rounded-b-3xl rounded-t-xl mt-[-40px] relative z-10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t-8 border-black/10 flex flex-col items-center">
+            
+            {/* Front Panel */}
+            <div className="w-48 h-32 bg-white/90 rounded-xl mt-12 shadow-inner border-4 border-pink-300 flex flex-col items-center justify-center relative">
+                
+                {/* Spin Knob */}
+                <motion.button
+                    onClick={handleSpin}
+                    disabled={isSpinning || droppedCapsule !== null || prize !== null || capsules.length === 0}
+                    whileTap={{ scale: 0.95 }}
+                    animate={isSpinning ? { rotate: 360 } : { rotate: 0 }}
+                    transition={isSpinning ? { duration: 0.5, repeat: Infinity, ease: "linear" } : {}}
+                    className={`w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 border-4 border-yellow-200 shadow-xl flex items-center justify-center z-20 ${isSpinning || capsules.length === 0 ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:brightness-110'}`}
+                >
+                    <div className="w-full h-3 bg-yellow-600/30 absolute" />
+                    <div className="h-full w-3 bg-yellow-600/30 absolute" />
+                    <div className="w-4 h-4 bg-white/50 rounded-full z-10" />
+                </motion.button>
+                <span className="font-cursive text-pink-500 mt-2 text-lg">
+                    {capsules.length === 0 ? "Empty!" : "Click to Spin"}
+                </span>
+            </div>
+
+            {/* Exit Chute */}
+            <div className="absolute -bottom-8 bg-gray-800 w-32 h-16 rounded-b-2xl border-x-4 border-b-4 border-gray-700 shadow-lg flex items-center justify-center overflow-visible">
+                 <div className="absolute top-0 w-full h-4 bg-black/50 shadow-inner" />
+                 
+                 <AnimatePresence>
+                     {droppedCapsule && (
+                         <motion.button
+                             initial={{ y: -50, opacity: 0 }}
+                             animate={{ y: 0, opacity: 1, rotate: 360 }}
+                             exit={{ scale: 0, opacity: 0 }}
+                             transition={{ type: "spring", bounce: 0.4 }}
+                             onClick={() => {
+                                 setPrize(droppedCapsule);
+                                 setDroppedCapsule(null);
+                             }}
+                             className={`w-12 h-12 rounded-full bg-gradient-to-br ${droppedCapsule.color} border-2 border-white shadow-lg z-30 cursor-pointer animate-bounce`}
+                         >
+                            <span className="text-white text-[10px] font-bold drop-shadow-md">OPEN</span>
+                         </motion.button>
+                     )}
+                 </AnimatePresence>
+            </div>
+        </div>
+
+        {/* Legs */}
+        <div className="w-80 flex justify-between px-4 mt-[-10px] opacity-80">
+            <div className="w-4 h-8 bg-pink-800 rounded-b-lg" />
+            <div className="w-4 h-8 bg-pink-800 rounded-b-lg" />
+        </div>
+      </div>
+
+      {/* Prize Modal */}
+      <AnimatePresence>
+        {prize && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0 }}
+                className="bg-white rounded-3xl p-8 max-w-md w-full text-center relative overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.5)]"
+            >
+                <button 
+                    onClick={() => setPrize(null)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                    <X />
+                </button>
+                
+                <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${prize.color} mb-6 border-4 border-gray-100 shadow-xl flex items-center justify-center animate-pulse`}>
+                    <Gift size={40} className="text-white" />
+                </div>
+
+                <h4 className="font-cursive text-4xl text-gray-800 mb-4">A Blessing For You</h4>
+                <p className="font-chinese text-2xl text-pink-600 leading-relaxed min-h-[80px] flex items-center justify-center">
+                    {prize.message}
+                </p>
+                
+                <button 
+                    onClick={() => setPrize(null)}
+                    className="mt-6 bg-gray-900 text-white px-8 py-3 rounded-full font-cursive text-2xl hover:bg-gray-800 transition-colors shadow-lg"
+                >
+                    Collect ❤
+                </button>
+
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default SectionGacha;
