@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Capsule } from '../types';
-import { Plus, Gift, X } from 'lucide-react';
+import { Plus, Gift, X, Sparkles, ScrollText, RotateCcw, Wand2 } from 'lucide-react';
 
 const INITIAL_CAPSULES: Capsule[] = [
   { id: '1', message: "May all your wishes come true! ✨", color: 'from-red-400 to-red-600' },
@@ -38,6 +38,15 @@ const SectionGacha: React.FC = () => {
   const [droppingId, setDroppingId] = useState<string | null>(null);
   const [prize, setPrize] = useState<Capsule | null>(null);
   const [droppedCapsule, setDroppedCapsule] = useState<Capsule | null>(null);
+  
+  // New States
+  const [collectedItems, setCollectedItems] = useState<Capsule[]>([]);
+  const [showCollection, setShowCollection] = useState(false);
+  const [showManifestation, setShowManifestation] = useState(false);
+  
+  // Cheat Mode States
+  const [showCheatModal, setShowCheatModal] = useState(false);
+  const [cheatSelection, setCheatSelection] = useState<Capsule | null>(null);
 
   const handleAddWish = () => {
     if (!newWish.trim()) return;
@@ -59,8 +68,19 @@ const SectionGacha: React.FC = () => {
 
     // 1. Spin Phase
     setTimeout(() => {
-        const randomIndex = Math.floor(Math.random() * capsules.length);
-        const selected = capsules[randomIndex];
+        let selected: Capsule;
+        
+        // CHEAT LOGIC: If a cheat selection exists and is still in the machine, use it.
+        const cheatExists = cheatSelection && capsules.find(c => c.id === cheatSelection.id);
+        
+        if (cheatExists) {
+            selected = cheatSelection!;
+            setCheatSelection(null); // Clear cheat after use
+        } else {
+            // Normal Random Logic
+            const randomIndex = Math.floor(Math.random() * capsules.length);
+            selected = capsules[randomIndex];
+        }
         
         setIsSpinning(false);
         setDroppingId(selected.id);
@@ -75,9 +95,75 @@ const SectionGacha: React.FC = () => {
     }, 2000);
   };
 
+  const handleCollectPrize = () => {
+      if (prize) {
+          // Add to collection if not already there (based on ID)
+          if (!collectedItems.find(i => i.id === prize.id)) {
+              setCollectedItems(prev => [prize, ...prev]);
+          }
+          setPrize(null);
+      }
+  };
+  
+  const handleCheatSelect = (cap: Capsule) => {
+      setCheatSelection(cap);
+      setShowCheatModal(false);
+  };
+
+  // --- MANIFESTATION VIEW ---
+  if (showManifestation) {
+      return (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center h-full w-full relative z-20 px-4"
+          >
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm -z-10" />
+              
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                className="text-center"
+              >
+                  <motion.div 
+                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                    className="inline-block mb-8"
+                  >
+                      <Sparkles size={64} className="text-yellow-300 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                  </motion.div>
+
+                  <h2 className="font-cursive text-6xl md:text-8xl text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300 drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-6 leading-tight p-2">
+                      Your Wishes<br/>Will Surely<br/>Come True
+                  </h2>
+                  
+                  <p className="font-sans text-white/70 text-lg md:text-xl tracking-widest uppercase">
+                      Trust the magic of new beginnings
+                  </p>
+              </motion.div>
+
+              <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 2 }}
+                  onClick={() => setShowManifestation(false)}
+                  className="mt-16 flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-white/60 hover:text-white"
+              >
+                  <RotateCcw size={20} />
+                  <span className="text-sm">Reset Game</span>
+              </motion.button>
+          </motion.div>
+      );
+  }
+
+  // --- GACHA GAME VIEW ---
   return (
     // Vertical layout by default, Row on XL screens. Reduced bottom padding.
-    <div className="flex flex-col xl:flex-row h-full items-center justify-start xl:justify-center gap-4 xl:gap-12 p-4 pb-24 relative z-10 w-full max-w-7xl mx-auto overflow-y-auto xl:overflow-visible custom-scrollbar">
+    // Removed overflow-y-auto from here if possible, but keeping it on parent container usually helps.
+    // We will ensure the inner child doesn't scroll independently.
+    <div className="flex flex-col xl:flex-row h-full items-center justify-start xl:justify-center gap-4 xl:gap-12 p-4 pb-24 relative z-10 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar">
       
       {/* Center: The Gacha Machine */}
       {/* Added shake animation to container when spinning */}
@@ -220,27 +306,29 @@ const SectionGacha: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Left Panel: Controls - Styled for mobile compaction */}
+      {/* Left Panel: Controls - REMOVED internal scroll limits for unified scrolling */}
       <motion.div 
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="w-full max-w-sm xl:max-w-md xl:w-1/3 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 order-2 xl:order-1 z-30 flex flex-col gap-3 shrink-0 max-h-[30vh] xl:max-h-none overflow-hidden"
+        className="w-full max-w-sm xl:max-w-md xl:w-1/3 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 order-2 xl:order-1 z-30 flex flex-col gap-3 shrink-0 h-auto"
       >
         <div className="flex items-center justify-between">
             <h3 className="font-cursive text-2xl text-white">Make a Wish</h3>
             <span className="text-white/50 text-xs">{capsules.length} balls left</span>
         </div>
 
-        {/* INSTRUCTIONS - NEW ADDITION */}
+        {/* INSTRUCTIONS - UPDATED */}
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-             <p className="font-sans text-[11px] sm:text-xs text-white/70 leading-relaxed">
-               <span className="font-bold text-pink-300">How to Play:</span><br/>
-               1. Add your own wishes below (optional).<br/>
-               2. Click the <span className="text-yellow-400 font-bold">yellow knob</span> to spin.<br/>
-               3. Open the fallen capsule for a surprise!
-             </p>
+             <div className="font-sans text-[11px] sm:text-xs text-white/70 leading-relaxed space-y-1">
+               <span className="font-bold text-pink-300 block mb-1">How to Play:</span>
+               <p>1. <span className="text-yellow-400 font-bold">Spin</span> to get a blessing or add your own wishes.</p>
+               <p>2. Check <span className="text-indigo-300 font-bold">Collection</span> to see your history.</p>
+               <p>3. Use <span className="text-pink-300 font-bold">Manifest</span> for a magical wish.</p>
+               <p>4. Try <span className="text-yellow-300 font-bold">Magic</span> to choose your next prize!</p>
+             </div>
         </div>
         
+        {/* Wish Input */}
         <div className="flex gap-2">
           <input
             type="text"
@@ -257,13 +345,47 @@ const SectionGacha: React.FC = () => {
             <Plus size={20} />
           </button>
         </div>
+        
+        {/* Cheat Status Indicator */}
+        <AnimatePresence>
+            {cheatSelection && (
+                <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-purple-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5 flex items-center justify-between"
+                >
+                    <span className="text-xs text-purple-200">✨ Next spin result set!</span>
+                    <button onClick={() => setCheatSelection(null)}><X size={14} className="text-purple-300" /></button>
+                </motion.div>
+            )}
+        </AnimatePresence>
 
-        {/* Capsule List - horizontal on mobile to save space, flex-wrap on desktop */}
-        <div className="flex xl:flex-wrap gap-2 overflow-x-auto xl:overflow-y-auto pb-2 xl:pb-0 custom-scrollbar xl:max-h-60">
-            {capsules.map((c, i) => (
-                <div key={i} className={`w-5 h-5 shrink-0 rounded-full bg-gradient-to-br ${c.color} shadow-sm border border-white/30`} />
-            ))}
+        {/* Action Buttons */}
+        <div className="grid grid-cols-3 gap-2 mt-2">
+            <button 
+                onClick={() => setShowCollection(true)}
+                className="col-span-1 flex flex-col items-center justify-center gap-1 bg-indigo-900/50 hover:bg-indigo-800/60 border border-indigo-500/30 text-indigo-100 p-2 rounded-xl transition-all"
+            >
+                <ScrollText size={16} />
+                <span className="text-[10px] font-bold">Collection</span>
+            </button>
+            <button 
+                onClick={() => setShowManifestation(true)}
+                className="col-span-1 flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-pink-900/50 to-purple-900/50 hover:from-pink-800/60 hover:to-purple-800/60 border border-pink-500/30 text-pink-100 p-2 rounded-xl transition-all"
+            >
+                <Sparkles size={16} />
+                <span className="text-[10px] font-bold">Manifest</span>
+            </button>
+            <button 
+                onClick={() => setShowCheatModal(true)}
+                className="col-span-1 flex flex-col items-center justify-center gap-1 bg-yellow-900/30 hover:bg-yellow-800/40 border border-yellow-500/30 text-yellow-100 p-2 rounded-xl transition-all"
+            >
+                <Wand2 size={16} />
+                <span className="text-[10px] font-bold">Magic</span>
+            </button>
         </div>
+
       </motion.div>
 
       {/* Prize Modal */}
@@ -298,7 +420,7 @@ const SectionGacha: React.FC = () => {
                 </p>
                 
                 <button 
-                    onClick={() => setPrize(null)}
+                    onClick={handleCollectPrize}
                     className="mt-6 bg-gradient-to-r from-gray-900 to-gray-700 text-white px-8 py-3 rounded-full font-cursive text-2xl hover:scale-105 transition-transform shadow-lg w-full"
                 >
                     Collect ❤
@@ -307,6 +429,98 @@ const SectionGacha: React.FC = () => {
                 {/* Decorative Confetti in Modal */}
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-400 via-yellow-400 to-blue-400" />
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Collection Modal */}
+      <AnimatePresence>
+        {showCollection && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+          >
+             <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col relative shadow-2xl">
+                 <button 
+                    onClick={() => setShowCollection(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                >
+                    <X />
+                </button>
+
+                <h3 className="font-cursive text-3xl text-pink-300 mb-6 text-center">My Collection</h3>
+                
+                {collectedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                        <Gift size={48} className="mb-2 opacity-30" />
+                        <p>No blessings collected yet.</p>
+                        <p className="text-xs mt-1">Play the game to find them!</p>
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                        {collectedItems.map((item, idx) => (
+                            <motion.div 
+                                key={`${item.id}-${idx}`}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className={`p-4 rounded-xl bg-gradient-to-r ${item.color} bg-opacity-20 border border-white/10 flex items-center gap-4`}
+                            >
+                                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                    {idx + 1}
+                                </div>
+                                <p className="font-chinese text-xl text-white drop-shadow-md">{item.message}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cheat Mode Modal */}
+      <AnimatePresence>
+        {showCheatModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+          >
+             <div className="bg-gray-900 border border-yellow-500/30 rounded-2xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col relative shadow-[0_0_30px_rgba(234,179,8,0.2)]">
+                 <button 
+                    onClick={() => setShowCheatModal(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                >
+                    <X />
+                </button>
+
+                <div className="text-center mb-6">
+                    <Wand2 className="inline-block text-yellow-400 mb-2" size={32} />
+                    <h3 className="font-cursive text-3xl text-yellow-300">Magic Selection</h3>
+                    <p className="text-white/50 text-xs">Choose which blessing will appear next.</p>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                    {capsules.map((item, idx) => (
+                        <motion.button 
+                            key={`${item.id}-${idx}`}
+                            onClick={() => handleCheatSelect(item)}
+                            className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-4 group transition-colors"
+                        >
+                            <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${item.color} shrink-0`} />
+                            <p className="font-chinese text-lg text-white/80 group-hover:text-white truncate">{item.message}</p>
+                            <span className="ml-auto text-yellow-500 opacity-0 group-hover:opacity-100 text-xs">Select</span>
+                        </motion.button>
+                    ))}
+                    {capsules.length === 0 && (
+                        <p className="text-center text-white/40 py-4">No capsules left in the machine!</p>
+                    )}
+                </div>
+             </div>
           </motion.div>
         )}
       </AnimatePresence>

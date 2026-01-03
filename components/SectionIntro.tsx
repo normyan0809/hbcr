@@ -22,9 +22,14 @@ const SectionIntro: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1, duration: 1 }}
-        className="text-white/60 font-sans text-sm md:text-base animate-pulse"
+        className="flex flex-col items-center gap-3"
       >
-        (Swipe or use arrows to navigate)
+        <p className="text-white/60 font-sans text-sm md:text-base animate-pulse">
+          (Swipe or use arrows to navigate)
+        </p>
+        <p className="text-pink-300/90 font-chinese text-xl md:text-2xl drop-shadow-md">
+          跟给hyy的完全不一样！！！
+        </p>
       </motion.div>
     </div>
   );
